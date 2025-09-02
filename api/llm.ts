@@ -3,25 +3,49 @@ import Groq from "groq-sdk";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+// allow local dev + your prod domain if you add one later
+const ALLOW_LIST = new Set([
+  "http://localhost:8081",
+  "http://127.0.0.1:8081",
+  "http://localhost:19006",
+  "http://127.0.0.1:19006",
+  "https://recipe-beta-six.vercel.app",
+]);
+
+function setCors(req: VercelRequest, res: VercelResponse) {
+  const origin = (req.headers.origin as string) || "";
+  const allowOrigin = ALLOW_LIST.has(origin) ? origin : "*";
+  res.setHeader("Access-Control-Allow-Origin", allowOrigin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Max-Age", "86400");
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  setCors(req, res);
+
+  if (req.method === "OPTIONS") {
+    // preflight ok
+    return res.status(204).end();
+  }
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { prompt, system } = req.body;
-
+    const { prompt, system } = (req.body as any) || {};
     const chat = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant", // or whichever Groq model
+      model: "llama-3.1-8b-instant",
       messages: [
         system ? { role: "system", content: system } : null,
-        { role: "user", content: prompt },
+        { role: "user", content: String(prompt ?? "") },
       ].filter(Boolean) as any,
+      temperature: 0.4,
     });
-
-    res.status(200).json({ text: chat.choices[0].message?.content ?? "" });
-  } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: err.message ?? "LLM error" });
+    return res.status(200).json({ text: chat.choices[0].message?.content ?? "" });
+  } catch (e: any) {
+    console.error(e);
+    return res.status(500).json({ error: e.message ?? "LLM error" });
   }
 }
