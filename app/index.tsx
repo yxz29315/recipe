@@ -248,7 +248,7 @@ export default function Index() {
         <TextInput
           value={prompt}
           onChangeText={setPrompt}
-          placeholder="Type your question…"
+          placeholder="(Optional) add ingredients not in image…"
           multiline
           style={styles.input}
         />

@@ -40,22 +40,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         system ? { role: "system", content: system } : null,
     ];
 
+    const userContent: any[] = [];
+    const basePrompt = "Concisely list the ingredients found in the user's request (no introductory sentence). Then, suggest 1-2 possible recipes using these ingredients. For the first recipe, provide the full recipe with every step.";
+    
+    let finalPrompt = basePrompt;
+    if (prompt) {
+      finalPrompt = `${prompt}\n\n${basePrompt}`;
+    }
+
+    userContent.push({ type: "text", text: finalPrompt });
+
     if (image) {
-        const textPrompt = String(prompt || "Describe the image.");
+      userContent.push({
+        type: "image_url",
+        image_url: {
+          url: image,
+        },
+      });
+    }
+
+    if (prompt || image) {
         messages.push({
             role: "user",
-            content: [
-                { type: "text", text: textPrompt },
-                {
-                    type: "image_url",
-                    image_url: {
-                        url: image,
-                    },
-                },
-            ],
+            content: userContent,
         });
-    } else {
-        messages.push({ role: "user", content: String(prompt ?? "") });
     }
 
     const chat = await groq.chat.completions.create({
