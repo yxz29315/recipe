@@ -25,9 +25,10 @@ Hard rules:
 const basePrompt = `
 Task: Extract ingredients from any provided text and/or image, then suggest 1–2 recipes.
 Rules:
+- ONLY list ingredients EXPLICITLY provided in the text or CLEARLY visible in the image. Do NOT infer or add any other ingredients.
 - Start immediately with a bullet list of ingredient names ONLY (one per line). No intro sentence.
 - Combine ingredients from BOTH text and image if both are present; deduplicate similar items.
-- After the list, suggest 1–2 recipes using those ingredients. Provide the FULL recipe (every step) for the first suggestion.
+- After the list, suggest 1–2 recipes using ONLY those listed ingredients. Provide the FULL recipe (every step) for the first suggestion.
 - Never mention the image/text, the word "based", "seems", or any meta commentary.
 
 Exact Format (follow precisely):
