@@ -36,7 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { prompt, system } = (req.body as any) || {};
     const chat = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
+      model: "meta-llama/llama-4-maverick-17b-128e-instruct",
       messages: [
         system ? { role: "system", content: system } : null,
         { role: "user", content: String(prompt ?? "") },
