@@ -24,6 +24,7 @@ Hard rules:
 // 2) Make the base prompt an explicit template with zero room for prefaces
 const basePrompt = `
 Task: Extract ingredients from any provided text and/or image, then suggest 1–2 recipes.
+User Provided Text: {USER_PROMPT_PLACEHOLDER}
 Rules:
 - ONLY list ingredients EXPLICITLY provided in the text or CLEARLY visible in the image. Do NOT infer or add any other ingredients.
 - Start immediately with a bullet list of ingredient names ONLY (one per line). No intro sentence.
@@ -121,8 +122,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Let user text (if any) go first, then the strict template
-    const finalPrompt = prompt ? `${prompt}\n\n${basePrompt}` : basePrompt;
+    // Substitute user's prompt into the basePrompt template
+    const finalPrompt = basePrompt.replace('{USER_PROMPT_PLACEHOLDER}', prompt || 'None provided.');
 
     userContent.push({ type: "text", text: finalPrompt });
 

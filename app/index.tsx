@@ -249,6 +249,7 @@ export default function Index() {
           value={prompt}
           onChangeText={setPrompt}
           placeholder="(Optional) add ingredients not in image…"
+          placeholderTextColor="#888" // Added
           multiline
           style={styles.input}
         />
