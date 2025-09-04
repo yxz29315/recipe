@@ -34,13 +34,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { prompt, system } = (req.body as any) || {};
-    const chat = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-maverick-17b-128e-instruct",
-      messages: [
+    const { prompt, image, system } = (req.body as any) || {};
+
+    const messages: any[] = [
         system ? { role: "system", content: system } : null,
-        { role: "user", content: String(prompt ?? "") },
-      ].filter(Boolean) as any,
+    ];
+
+    if (image) {
+        const textPrompt = String(prompt || "Describe the image.");
+        messages.push({
+            role: "user",
+            content: [
+                { type: "text", text: textPrompt },
+                {
+                    type: "image_url",
+                    image_url: {
+                        url: image,
+                    },
+                },
+            ],
+        });
+    } else {
+        messages.push({ role: "user", content: String(prompt ?? "") });
+    }
+
+    const chat = await groq.chat.completions.create({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct", // Use the multimodal model
+      messages: messages.filter(Boolean) as any,
       temperature: 0.4,
     });
     return res.status(200).json({ text: chat.choices[0].message?.content ?? "" });

@@ -1,82 +1,22 @@
+import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Button,
+  Image,
   StyleSheet,
   Text,
   TextInput,
   View,
+  TouchableOpacity,
 } from "react-native";
 
 const API_URL = "https://recipe-beta-six.vercel.app/api/llm";
 
 const FormattedAnswer = ({ answer }: { answer: string }) => {
-  // Remove all LaTeX/math expressions and commands
-  // Remove $...$, \(...\), \[...\], and LaTeX commands like \frac, \boxed, etc.
-  function latexToPlainMath(text: string) {
-    let out = text;
-    // Remove markdown headers (##, ###, etc.)
-    out = out.replace(/^#+\s*/gm, '');
-    // Replace \frac{a}{b} with a / b
-    out = out.replace(/\\frac{([^}]*)}{([^}]*)}/g, '$1 / $2');
-    // Replace \boxed{a} with a
-    out = out.replace(/\\boxed{([^}]*)}/g, '$1');
-    // Replace \neq or != with ≠
-    out = out.replace(/\\neq|!=/g, '≠');
-    // Replace >= and <=
-    out = out.replace(/\\geq|>=/g, '≥');
-    out = out.replace(/\\leq|<=/g, '≤');
-  // Replace superscripts: x^{2} => x² (for 0-9 and common variables)
-  out = out.replace(/([a-zA-Z0-9])\s*\^\s*{\s*([0-9a-zA-Z+-]+)\s*}/g, (m, base, sup) => base + toSuperscript(sup));
-  // Replace x^2 (no braces) => x²
-  out = out.replace(/([a-zA-Z0-9])\s*\^\s*([0-9a-zA-Z+-])/g, (m, base, sup) => base + toSuperscript(sup));
-  // Replace (expr)^2 => (expr)²
-  out = out.replace(/(\([^()]+\))\s*\^\s*([0-9a-zA-Z+-])/g, (m, expr, sup) => expr + toSuperscript(sup));
-  // Replace numbers like 3 ^ 2 => 3²
-  out = out.replace(/(\d+)\s*\^\s*([0-9a-zA-Z+-])/g, (m, num, sup) => num + toSuperscript(sup));
-    // Replace subscripts: x_{2} => x₂
-    out = out.replace(/([a-zA-Z0-9])_{([0-9a-zA-Z+-]+)}/g, (m, base, sub) => base + toSubscript(sub));
-    // Remove $...$, \(...\), \[...\] but keep content
-    out = out.replace(/\$([^$]+)\$/g, '$1');
-    out = out.replace(/\\\((.*?)\\\)/g, '$1');
-    out = out.replace(/\\\[(.*?)\\\]/gs, '$1');
-    // Remove remaining LaTeX commands (\text, etc.)
-    out = out.replace(/\\[a-zA-Z]+\s?/g, '');
-    // Remove curly braces
-    out = out.replace(/[{}]/g, '');
-    // Remove multiple spaces
-    out = out.replace(/  +/g, ' ');
-    // Fix common math spacing
-    out = out.replace(/\s*([=≠≥≤+\-*/^])\s*/g, ' $1 ');
-    // Remove spaces before punctuation
-    out = out.replace(/\s+([.,;:!?)])/g, '$1');
-    // Remove spaces after opening parens
-    out = out.replace(/([(])\s+/g, '$1');
-    // Remove spaces before closing parens
-    out = out.replace(/\s+([)])/g, '$1');
-    return out.trim();
-  }
-
-  // Helper for superscript (supports 0-9, +, -, a-z, A-Z)
-  function toSuperscript(str: string) {
-    const map: { [key: string]: string } = {
-      '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
-      '+': '⁺', '-': '⁻', 'n': 'ⁿ', 'i': 'ⁱ', 'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ', 'g': 'ᵍ', 'h': 'ʰ', 'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ', 'm': 'ᵐ', 'o': 'ᵒ', 'p': 'ᵖ', 'r': 'ʳ', 's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ', 'A': 'ᴬ', 'B': 'ᴮ', 'D': 'ᴰ', 'E': 'ᴱ', 'G': 'ᴳ', 'H': 'ᴴ', 'I': 'ᴵ', 'J': 'ᴶ', 'K': 'ᴷ', 'L': 'ᴸ', 'M': 'ᴹ', 'N': 'ᴺ', 'O': 'ᴼ', 'P': 'ᴾ', 'R': 'ᴿ', 'T': 'ᵀ', 'U': 'ᵁ', 'V': 'ⱽ', 'W': 'ᵂ'
-    };
-    return str.split('').map(c => map[c] || c).join('');
-  }
-  // Helper for subscript (supports 0-9, +, -, a-z, A-Z)
-  function toSubscript(str: string) {
-    const map: { [key: string]: string } = {
-      '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
-      '+': '₊', '-': '₋', 'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ', 'i': 'ᵢ', 'j': 'ⱼ', 'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ', 'n': 'ₙ', 'o': 'ₒ', 'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ', 'u': 'ᵤ', 'v': 'ᵥ', 'x': 'ₓ'
-    };
-    return str.split('').map(c => map[c] || c).join('');
-  }
-
   const finalAnswerMatch = answer.match(/The final answer is: (.*)/s);
-  let finalAnswer = finalAnswerMatch
-    ? latexToPlainMath(finalAnswerMatch[1])
+  const finalAnswer = finalAnswerMatch
+    ? finalAnswerMatch[1].replace(/\\boxed{([^}]+)}/, "$1").trim()
     : null;
 
   const stepsPart = finalAnswerMatch
@@ -95,11 +35,23 @@ const FormattedAnswer = ({ answer }: { answer: string }) => {
           );
         }
         const lines = step.trim().split("\n");
-        return lines.map((line, lineIndex) => (
-          <Text key={`${index}-${lineIndex}`} style={styles.stepContent}>
-            {latexToPlainMath(line)}
-          </Text>
-        ));
+        return lines.map((line, lineIndex) => {
+          const textParts = line.split(/(\$[^$]+\$)/);
+          return (
+            <Text key={`${index}-${lineIndex}`} style={styles.stepContent}>
+              {textParts.map((textPart, i) => {
+                if (textPart.startsWith("$") && textPart.endsWith("$")) {
+                  return (
+                    <Text key={i} style={styles.mathExpression}>
+                      {textPart.slice(1, -1)}
+                    </Text>
+                  );
+                }
+                return textPart;
+              })}
+            </Text>
+          );
+        });
       })}
       {finalAnswer && (
         <View style={styles.finalAnswerContainer}>
@@ -115,12 +67,39 @@ const FormattedAnswer = ({ answer }: { answer: string }) => {
 
 export default function Index() {
   const [prompt, setPrompt] = useState("");
+  const [image, setImage] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const pickImage = async (useCamera: boolean) => {
+    let result;
+    if (useCamera) {
+      await ImagePicker.requestCameraPermissionsAsync();
+      result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.5,
+        base64: true,
+      });
+    } else {
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.5,
+        base64: true,
+      });
+    }
+
+    if (!result.canceled) {
+      setImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
+
   const ask = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() && !image) return;
     setLoading(true);
     setError(null);
     setAnswer("");
@@ -128,7 +107,7 @@ export default function Index() {
       const resp = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, image }),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -143,6 +122,23 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Ask the model</Text>
+
+      <View style={styles.topButtonContainer}>
+        <TouchableOpacity style={styles.topButton} onPress={() => pickImage(true)}>
+          <Text style={styles.topButtonText}>Take Photo</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.topButton} onPress={() => pickImage(false)}>
+          <Text style={styles.topButtonText}>Choose from Library</Text>
+        </TouchableOpacity>
+      </View>
+
+      {image && (
+        <View>
+          <Image source={{ uri: image }} style={styles.imagePreview} />
+          <Button title="Remove Image" onPress={() => setImage(null)} />
+        </View>
+      )}
+
       <TextInput
         value={prompt}
         onChangeText={setPrompt}
@@ -150,6 +146,7 @@ export default function Index() {
         multiline
         style={styles.input}
       />
+
       <Button title="Send" onPress={ask} />
       {loading && <ActivityIndicator />}
       {!!error && <Text style={styles.errorText}>{error}</Text>}
@@ -168,11 +165,13 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     gap: 12,
-    justifyContent: "center",
+    justifyContent: "flex-start",
   },
   title: {
     fontSize: 18,
     fontWeight: "600",
+    textAlign: 'center',
+    marginBottom: 20,
   },
   input: {
     borderWidth: 1,
@@ -230,5 +229,30 @@ const styles = StyleSheet.create({
     backgroundColor: "#eee",
     paddingHorizontal: 4,
     borderRadius: 4,
+  },
+  imagePreview: {
+    width: "100%",
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  topButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 10,
+  },
+  topButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  topButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
