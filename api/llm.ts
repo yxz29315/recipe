@@ -113,17 +113,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const userContent: any[] = [];
 
-    // Let user text (if any) go first, then the strict template
-    const finalPrompt = prompt ? `${prompt}\n\n${basePrompt}` : basePrompt;
-
-    userContent.push({ type: "text", text: finalPrompt });
-
     if (image) {
       userContent.push({
         type: "image_url",
         image_url: { url: image },
       });
     }
+
+    // Let user text (if any) go first, then the strict template
+    const finalPrompt = prompt ? `${prompt}\n\n${basePrompt}` : basePrompt;
+
+    userContent.push({ type: "text", text: finalPrompt });
 
     messages.push({ role: "user", content: userContent });
 
