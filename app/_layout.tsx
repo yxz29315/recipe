@@ -7,6 +7,10 @@ export default function RootLayout() {
         name="index"
         options={{
           title: "Nomie.ai",
+          headerTitleStyle: {
+          fontSize: 30,
+          fontWeight: "bold",
+    },
         }}
       />
     </Stack>

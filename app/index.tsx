@@ -4,7 +4,6 @@ import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   Image,
   Platform,
   ScrollView,
@@ -12,7 +11,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import MathJaxSVG from "react-native-mathjax-svg";
 
@@ -241,7 +240,9 @@ export default function Index() {
         {image && (
           <View>
             <Image source={{ uri: image }} style={styles.imagePreview} />
-            <Button title="Remove Image" onPress={() => setImage(null)} />
+            <TouchableOpacity style={styles.removeButton} onPress={() => setImage(null)}>
+              <Text style={styles.removeButtonText}>Remove Image</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -254,7 +255,9 @@ export default function Index() {
           style={styles.input}
         />
 
-        <Button title="Send" onPress={ask} />
+        <TouchableOpacity style={styles.sendButton} onPress={ask}>
+          <Text style={styles.sendButtonText}>Send</Text>
+        </TouchableOpacity>
         {loading && <ActivityIndicator />}
         {!!error && <Text style={styles.errorText}>{error}</Text>}
         {!!answer && (
@@ -272,20 +275,21 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContainer: { padding: 20, gap: 12 },
-  title: { fontSize: 18, fontWeight: "600", textAlign: "center", marginBottom: 20 },
+  title: { fontSize: 25, fontWeight: "600", textAlign: "center", marginTop: 10, marginBottom: 10 },
 
   // Text styles with compact spacing
-  p: { marginBottom: 4, lineHeight: 20, fontSize: 16 },
-  li: { marginBottom: 4, lineHeight: 20, fontSize: 16 },
-  bold: { fontWeight: "bold", marginBottom: 6, fontSize: 16 },
-  h2: { fontSize: 20, fontWeight: "bold", marginTop: 10, marginBottom: 6 },
-  h3: { fontSize: 18, fontWeight: "bold", marginTop: 8, marginBottom: 4 },
+  p: { marginBottom: 10, lineHeight: 20, fontSize: 20 },
+  li: { marginBottom: 10, lineHeight: 20, fontSize: 20 },
+  bold: { fontWeight: "bold", marginBottom: 6, fontSize: 20 },
+  h2: { fontSize: 24, fontWeight: "bold", marginTop: 10, marginBottom: 6 },
+  h3: { fontSize: 22, fontWeight: "bold", marginTop: 8, marginBottom: 4 },
 
   // Math spacing (tighter)
   mathBlock: { marginVertical: 6 },
   mathInline: { marginVertical: 0 },
 
   input: {
+    fontSize: 17,
     borderWidth: 1,
     borderColor: "#ccc",
     padding: 12,
@@ -294,7 +298,7 @@ const styles = StyleSheet.create({
   },
   errorText: { color: "red" },
   answerContainer: { marginTop: 12 },
-  answerTitle: { fontWeight: "600", fontSize: 16, marginBottom: 8 },
+  answerTitle: { fontWeight: "600", fontSize: 20, marginBottom: 8 },
 
   stepHeader: { fontWeight: "bold", marginTop: 8, fontSize: 16, marginBottom: 4 },
   stepContent: { fontSize: 14, lineHeight: 20 },
@@ -334,5 +338,29 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 5,
   },
-  topButtonText: { color: "white", fontSize: 16, fontWeight: "bold" },
+  topButtonText: { color: "white", fontSize: 20, fontWeight: "bold" },
+  sendButton: {
+    backgroundColor: "#007AFF",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  sendButtonText: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  removeButton: {
+    backgroundColor: "#FF3B30", // A red color for remove
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  removeButtonText: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
 });
