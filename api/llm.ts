@@ -9,7 +9,7 @@ const ALLOW_LIST = new Set([
   "http://127.0.0.1:8081",
   "http://localhost:19006",
   "http://127.0.0.1:19006",
-  "https://recipe-beta-six.vercel.app",
+  "https://nomieai.vercel.app",
 ]);
 
 // 1) Add a strict default system prompt
@@ -27,6 +27,7 @@ Task: Extract ingredients from any provided text and/or image, then suggest 1–
 User Provided Text: {USER_PROMPT_PLACEHOLDER}
 Rules:
 - ONLY list ingredients EXPLICITLY provided in the text or CLEARLY visible in the image. Do NOT infer or add any other ingredients.
+- From 'User Provided Text', identify and list all distinct ingredients. Be mindful that ingredients can be single words (e.g., "salt) or multi-word phrases (e.g., "soy sauce", "heavy cream"). Treat each identified ingredient as a separate item.
 - Start immediately with a bullet list of ingredient names ONLY (one per line). No intro sentence.
 - Combine ingredients from BOTH text and image if both are present; deduplicate similar items.
 - After the list, suggest 1–2 recipes using ONLY those listed ingredients. Provide the FULL recipe (every step) for the first suggestion.
@@ -133,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const chat = await groq.chat.completions.create({
       model: "meta-llama/llama-4-scout-17b-16e-instruct",
       messages: messages.filter(Boolean) as any,
-      temperature: 0.4,
+      temperature: 0.2,
     });
 
     const raw = chat.choices[0].message?.content ?? "";

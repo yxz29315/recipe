@@ -1,5 +1,6 @@
 // Index.tsx
 import { MathJax, MathJaxContext } from "better-react-mathjax";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
@@ -15,7 +16,64 @@ import {
 } from "react-native";
 import MathJaxSVG from "react-native-mathjax-svg";
 
-const API_URL = "https://recipe-beta-six.vercel.app/api/llm";
+const API_URL = "https://nomieai.vercel.app/api/llm";
+
+/** ---------- Upload size controls ---------- */
+// Keep base64 safely under Groq (4MB) and Vercel body (4.5MB) limits
+const MAX_BASE64_BYTES = Math.floor(3.7 * 1024 * 1024); // ~3.7MB headroom
+const START_LONG_EDGE = 1280;  // good balance for quality/size
+const MIN_QUALITY = 0.4;       // don’t go below this
+const ATTEMPTS = 5;
+
+/** Resize + recompress until base64 fits within MAX_BASE64_BYTES */
+async function shrinkToLimit(
+  uri: string,
+  originalW?: number,
+  originalH?: number,
+  startEdge = START_LONG_EDGE
+): Promise<{ dataUri: string; width: number; height: number; b64Bytes: number }> {
+  let longEdge = Math.min(Math.max(originalW ?? startEdge, originalH ?? startEdge), startEdge);
+  let quality = 0.7;
+
+  for (let i = 0; i < ATTEMPTS; i++) {
+    // Choose which dimension to constrain based on orientation.
+    const resize:
+      | { width: number; height?: undefined }
+      | { height: number; width?: undefined } =
+      (originalW ?? 0) >= (originalH ?? 0)
+        ? { width: longEdge }
+        : { height: longEdge };
+
+    const result = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize }],
+      {
+        compress: quality, // 0..1
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      }
+    );
+
+    const b64 = result.base64 ?? "";
+    const b64Bytes = b64.length; // Base64 chars are single-byte in JSON
+
+    if (b64Bytes <= MAX_BASE64_BYTES) {
+      return {
+        dataUri: `data:image/jpeg;base64,${b64}`,
+        width: result.width,
+        height: result.height,
+        b64Bytes,
+      };
+    }
+
+    // Tighten for next pass
+    longEdge = Math.floor(longEdge * 0.8);
+    quality = Math.max(MIN_QUALITY, quality - 0.1);
+  }
+
+  // Final attempt (may still be large, but we tried our best)
+  throw new Error("Could not shrink image under size limit after several attempts.");
+}
 
 /** ---------- Web/native math renderer ---------- */
 const RNMath = ({
@@ -176,29 +234,35 @@ export default function Index() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const pickImage = async (useCamera: boolean) => {
-    let result: any;
-    if (useCamera) {
-      await ImagePicker.requestCameraPermissionsAsync();
-      result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.5,
-        base64: true,
-      });
-    } else {
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-      result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.5,
-        base64: true,
-      });
-    }
+  const pickAndShrink = async (useCamera: boolean) => {
+    try {
+      if (useCamera) {
+        await ImagePicker.requestCameraPermissionsAsync();
+      } else {
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      }
 
-    if (!result.canceled) {
-      setImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      const launcher = useCamera
+        ? ImagePicker.launchCameraAsync
+        : ImagePicker.launchImageLibraryAsync;
+
+      const result = await launcher({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true, // user can crop; not a strict pixel limiter
+        aspect: [4, 3],
+        quality: 1,          // pick full quality; we’ll control compression ourselves
+        base64: false,       // we’ll generate base64 *after* resizing
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      const { uri, width, height } = asset;
+
+      const shrunk = await shrinkToLimit(uri, width, height, START_LONG_EDGE);
+      setImage(shrunk.dataUri);
+    } catch (e: any) {
+      setError(e?.message ?? "Image selection failed");
     }
   };
 
@@ -226,13 +290,13 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Ask the model</Text>
+        <Text style={styles.title}>Ask the model (resizes before upload)</Text>
 
         <View style={styles.topButtonContainer}>
-          <TouchableOpacity style={styles.topButton} onPress={() => pickImage(true)}>
+          <TouchableOpacity style={styles.topButton} onPress={() => pickAndShrink(true)}>
             <Text style={styles.topButtonText}>Take Photo</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.topButton} onPress={() => pickImage(false)}>
+          <TouchableOpacity style={styles.topButton} onPress={() => pickAndShrink(false)}>
             <Text style={styles.topButtonText}>Choose from Library</Text>
           </TouchableOpacity>
         </View>
@@ -250,7 +314,7 @@ export default function Index() {
           value={prompt}
           onChangeText={setPrompt}
           placeholder="(Optional) add ingredients not in image…"
-          placeholderTextColor="#888" // Added
+          placeholderTextColor="#888"
           multiline
           style={styles.input}
         />
@@ -352,7 +416,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   removeButton: {
-    backgroundColor: "#FF3B30", // A red color for remove
+    backgroundColor: "#FF3B30",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
@@ -364,3 +428,4 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+
