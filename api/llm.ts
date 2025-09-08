@@ -47,7 +47,7 @@ Steps:
 1. <step>
 2. <step>
 
-2) <Optional second recipe title> (brief idea only)
+2) <Optional second recipe title>
 `.trim();
 
 function setCors(req: VercelRequest, res: VercelResponse) {
@@ -134,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const chat = await groq.chat.completions.create({
       model: "meta-llama/llama-4-maverick-17b-128e-instruct",
       messages: messages.filter(Boolean) as any,
-      temperature: 0.2,
+      temperature: 0,
     });
 
     const raw = chat.choices[0].message?.content ?? "";
