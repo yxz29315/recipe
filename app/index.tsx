@@ -290,7 +290,7 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Ask the model (resizes before upload)</Text>
+        <Text style={styles.title}>Ask the model</Text>
 
         <View style={styles.topButtonContainer}>
           <TouchableOpacity style={styles.topButton} onPress={() => pickAndShrink(true)}>

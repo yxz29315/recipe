@@ -1,11 +1,10 @@
 {
-  "buildCommand": "expo export -p web",
+  "buildCommand": "npx expo export -p web",
   "outputDirectory": "dist",
-  "devCommand": "expo",
-  "cleanUrls": true,
   "framework": null,
-  "rewrites": [
-    { "source": "/api/:match*", "destination": "/api/:match*" },
-    { "source": "/:path*", "destination": "/" }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
