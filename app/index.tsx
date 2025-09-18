@@ -16,6 +16,12 @@ import {
 } from "react-native";
 import MathJaxSVG from "react-native-mathjax-svg";
 
+import { Session } from "@supabase/supabase-js";
+import { useEffect } from "react";
+import Account from "../components/Account"; // or show your main screen instead
+import Auth from "../components/Auth";
+import { supabase } from "../lib/supabase"; // note: index.tsx is in /app, so ../lib
+
 const API_URL = "https://nomieai.vercel.app/api/llm";
 
 /** ---------- Upload size controls ---------- */
@@ -227,7 +233,7 @@ const FormattedAnswer = ({ answer }: { answer: string }) => {
 };
 
 /** ---------- Screen ---------- */
-export default function Index() {
+function MainScreen() {
   const [prompt, setPrompt] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
@@ -333,6 +339,30 @@ export default function Index() {
       </ScrollView>
     </View>
   );
+}
+
+export default function Index() {
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Choose ONE of these two returns:
+
+  // (A) Follow the tutorial exactly: show Account when logged in, Auth otherwise.
+  return session && session.user ? (
+    <Account key={session.user.id} session={session} />
+  ) : (
+    <Auth />
+  );
+
+  // (B) If you want your existing UI after login, swap to:
+  // return session ? <MainScreen /> : <Auth />;
 }
 
 /** ---------- Styles ---------- */
