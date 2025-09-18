@@ -25,7 +25,9 @@ Hard rules:
 const basePrompt = `
 Task: Extract ingredients from any provided text and/or image, then suggest 1–2 recipes.
 User Provided Text: {USER_PROMPT_PLACEHOLDER}
+Allergies: {ALLERGIES_PLACEHOLDER}
 Rules:
+- CRITICAL: If any allergies are listed in the "Allergies" section, you MUST NOT suggest any recipes that include those ingredients or any ingredients derived from them. For example, if "peanuts" is an allergy, you must not suggest peanut butter. This is a very strict rule, and you must follow it.
 - ONLY list ingredients EXPLICITLY provided in the text or CLEARLY visible in the image. Do NOT infer or add any other ingredients.
 - From 'User Provided Text', identify and list all distinct ingredients. Be mindful that ingredients can be single words (e.g., "salt) or multi-word phrases (e.g., "soy sauce", "heavy cream"). Treat each identified ingredient as a separate item.
 - Start immediately with a bullet list of ingredient names ONLY (one per line). No intro sentence.
@@ -104,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { prompt, image, system } = (req.body as any) || {};
+    const { prompt, image, system, allergies } = (req.body as any) || {};
 
     if (!prompt && !image) {
       return res.status(400).json({ error: "Provide 'prompt' text, an 'image' URL, or both." });
@@ -124,7 +126,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Substitute user's prompt into the basePrompt template
-    const finalPrompt = basePrompt.replace('{USER_PROMPT_PLACEHOLDER}', prompt || 'None provided.');
+    let finalPrompt = basePrompt.replace('{USER_PROMPT_PLACEHOLDER}', prompt || 'None provided.');
+    finalPrompt = finalPrompt.replace('{ALLERGIES_PLACEHOLDER}', allergies || 'None');
 
     userContent.push({ type: "text", text: finalPrompt });
 

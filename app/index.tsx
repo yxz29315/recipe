@@ -82,10 +82,10 @@ async function shrinkToLimit(
 }
 
 /** ---------- Web/native math renderer ---------- */
-const RNMath = ({
+const RNMath = ({ 
   latex,
   display = false,
-}: {
+}: { 
   latex: string;
   display?: boolean;
 }) =>
@@ -104,9 +104,9 @@ type Chunk =
   | { type: "text"; value: string }
   | { type: "math"; value: string; display: boolean };
 
-// Matches: \[...\ ] | $$...$$ | \(...\) | $...$ | \begin{aligned}...\end{aligned} | \boxed{...}
+// Matches: \[...\ ] | $$...$$ | \( ... \) | $...$ | \begin{aligned}...\end{aligned} | \boxed{...}
 const MATH_REGEX =
-  /(\[([\s\S]*?)\])|(\$(\$([\s\S]*?)\$))|(\\(([\]\s\S]*?)\\))|(\$([^$]*?)\$)|(\\begin\{aligned\}[\s\S]*?\\end\{aligned\})|(\\boxed{[\s\S]*?})/g;
+  /(\[([\s\S]*?)\])|(\$([\s\S]*?)\$)|(\\(([\\s\\S]*?)\\))|(\$([^$]*?)\$)|(\\begin{aligned}[\s\S]*?\\end{aligned})|(\\boxed{[\s\S]*?})/g;
 
 function splitAnswer(input: string): Chunk[] {
   const out: Chunk[] = [];
@@ -239,6 +239,48 @@ function MainScreen() {
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [allergies, setAllergies] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) {
+        getProfile(session);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        getProfile(session);
+      } else {
+        setAllergies(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function getProfile(session: Session) {
+    try {
+      if (!session?.user) throw new Error('No user on the session!');
+
+      const { data, error, status } = await supabase
+        .from('profiles')
+        .select('allergies')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error && status !== 406) throw error;
+
+      if (data) {
+        setAllergies(data.allergies);
+      }
+    } catch (err) {
+      // Do nothing, allergies will be null
+    }
+  }
 
   const pickAndShrink = async (useCamera: boolean) => {
     try {
@@ -281,7 +323,7 @@ function MainScreen() {
       const resp = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, image }),
+        body: JSON.stringify({ prompt, image, allergies }),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
