@@ -13,6 +13,16 @@ export default function RootLayout() {
     },
         }}
       />
+      <Stack.Screen
+        name="account"
+        options={{
+          title: "Account",
+          headerTitleStyle: {
+          fontSize: 30,
+          fontWeight: "bold",
+    },
+        }}
+      />
     </Stack>
   );
 }

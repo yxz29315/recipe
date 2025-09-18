@@ -18,9 +18,9 @@ import MathJaxSVG from "react-native-mathjax-svg";
 
 import { Session } from "@supabase/supabase-js";
 import { useEffect } from "react";
-import Account from "../components/Account"; // or show your main screen instead
 import Auth from "../components/Auth";
 import { supabase } from "../lib/supabase"; // note: index.tsx is in /app, so ../lib
+import { Link } from "expo-router";
 
 const API_URL = "https://nomieai.vercel.app/api/llm";
 
@@ -45,7 +45,7 @@ async function shrinkToLimit(
     // Choose which dimension to constrain based on orientation.
     const resize:
       | { width: number; height?: undefined }
-      | { height: number; width?: undefined } =
+      | { height: number; width?: undefined } = 
       (originalW ?? 0) >= (originalH ?? 0)
         ? { width: longEdge }
         : { height: longEdge };
@@ -91,7 +91,7 @@ const RNMath = ({
 }) =>
   Platform.OS === "web" ? (
     <MathJaxContext>
-      <MathJax dynamic>{display ? `\\[${latex}\\]` : `\\(${latex}\\)`}</MathJax>
+      <MathJax dynamic>{display ? `\[${latex}\]` : `\(${latex}\)`}</MathJax>
     </MathJaxContext>
   ) : (
     <MathJaxSVG fontSize={display ? 18 : 14} color="black" fontCache>
@@ -104,9 +104,9 @@ type Chunk =
   | { type: "text"; value: string }
   | { type: "math"; value: string; display: boolean };
 
-// Matches: \[...\] | $$...$$ | \(...\) | $...$ | \begin{aligned}...\end{aligned} | \boxed{...}
+// Matches: \[...\ ] | $$...$$ | \(...\) | $...$ | \begin{aligned}...\end{aligned} | \boxed{...}
 const MATH_REGEX =
-  /(\\\[([\s\S]*?)\\\])|(\$\$([\s\S]*?)\$\$)|(\\\(([\s\S]*?)\\\))|(\$([^$]*?)\$)|(\\begin\{aligned\}[\s\S]*?\\end\{aligned\})|(\\boxed\{[\s\S]*?\})/g;
+  /(\[([\s\S]*?)\])|(\$(\$([\s\S]*?)\$))|(\\(([\]\s\S]*?)\\))|(\$([^$]*?)\$)|(\\begin\{aligned\}[\s\S]*?\\end\{aligned\})|(\\boxed{[\s\S]*?})/g;
 
 function splitAnswer(input: string): Chunk[] {
   const out: Chunk[] = [];
@@ -296,7 +296,14 @@ function MainScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Ask the model</Text>
+        <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+          <Text style={styles.title}>Ask the model</Text>
+          <Link href="/account" asChild>
+            <TouchableOpacity style={styles.accountButton}>
+              <Text style={styles.accountButtonText}>Account</Text>
+            </TouchableOpacity>
+          </Link>
+        </View>
 
         <View style={styles.topButtonContainer}>
           <TouchableOpacity style={styles.topButton} onPress={() => pickAndShrink(true)}>
@@ -352,17 +359,7 @@ export default function Index() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Choose ONE of these two returns:
-
-  // (A) Follow the tutorial exactly: show Account when logged in, Auth otherwise.
-  return session && session.user ? (
-    <Account key={session.user.id} session={session} />
-  ) : (
-    <Auth />
-  );
-
-  // (B) If you want your existing UI after login, swap to:
-  // return session ? <MainScreen /> : <Auth />;
+  return session && session.user ? <MainScreen /> : <Auth />;
 }
 
 /** ---------- Styles ---------- */
@@ -457,5 +454,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
   },
+  accountButton: {
+    backgroundColor: "#007AFF",
+    padding: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  accountButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
 });
-

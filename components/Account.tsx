@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase'
 
 export default function Account({ session }: { session: Session }) {
   const [loading, setLoading] = useState(true)
-  const [username, setUsername] = useState('')
+  const [allergies, setAllergies] = useState('')
   const [website, setWebsite] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
 
@@ -29,14 +29,14 @@ export default function Account({ session }: { session: Session }) {
 
       const { data, error, status } = await supabase
         .from('profiles')
-        .select('username, website, avatar_url')
+        .select('allergies, website, avatar_url')
         .eq('id', session.user.id)
         .single()
 
       if (error && status !== 406) throw error
 
       if (data) {
-        setUsername(data.username ?? '')
+        setAllergies(data.allergies ?? '')
         setWebsite(data.website ?? '')
         setAvatarUrl(data.avatar_url ?? '')
       }
@@ -48,11 +48,11 @@ export default function Account({ session }: { session: Session }) {
   }
 
   async function updateProfile({
-    username,
+    allergies,
     website,
     avatar_url,
   }: {
-    username: string
+    allergies: string
     website: string
     avatar_url: string
   }) {
@@ -62,7 +62,7 @@ export default function Account({ session }: { session: Session }) {
 
       const updates = {
         id: session.user.id,
-        username,
+        allergies,
         website,
         avatar_url,
         updated_at: new Date().toISOString(),
@@ -89,13 +89,13 @@ export default function Account({ session }: { session: Session }) {
       </View>
 
       <View style={styles.verticallySpaced}>
-        <Text style={styles.label}>Username</Text>
+        <Text style={styles.label}>Allergies</Text>
         <TextInput
           style={styles.input}
-          value={username}
-          onChangeText={setUsername}
+          value={allergies}
+          onChangeText={setAllergies}
           autoCapitalize="none"
-          placeholder="username"
+          placeholder="e.g. peanuts, gluten"
         />
       </View>
 
@@ -113,7 +113,7 @@ export default function Account({ session }: { session: Session }) {
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <Pressable
           style={[styles.btn, loading && styles.btnDisabled]}
-          onPress={() => updateProfile({ username, website, avatar_url: avatarUrl })}
+          onPress={() => updateProfile({ allergies, website, avatar_url: avatarUrl })}
           disabled={loading}
         >
           {loading ? <ActivityIndicator /> : <Text style={styles.btnText}>Update</Text>}
