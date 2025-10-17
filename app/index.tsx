@@ -320,10 +320,39 @@ function MainScreen() {
     setError(null);
     setAnswer("");
     try {
+      // Refresh allergies from Supabase at send time to avoid stale state
+      let effectiveAllergies: string | null = allergies;
+      try {
+        if (session?.user) {
+          const { data, error, status } = await supabase
+            .from('profiles')
+            .select('allergies')
+            .eq('id', session.user.id)
+            .single();
+          if (!error || status === 406) {
+            effectiveAllergies = (data?.allergies ?? null) as string | null;
+          }
+        }
+      } catch {
+        // ignore and fall back to local state
+      }
+
+      const normalizedAllergies =
+        typeof effectiveAllergies === 'string'
+          ? effectiveAllergies
+              .split(',')
+              .map((item) => item.trim().toLowerCase())
+              .filter(Boolean)
+              .join(', ')
+          : null;
+      if (normalizedAllergies !== allergies) {
+        setAllergies(normalizedAllergies);
+      }
+
       const resp = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, image, allergies }),
+        body: JSON.stringify({ prompt, image, allergies: normalizedAllergies }),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();

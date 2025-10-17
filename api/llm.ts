@@ -19,6 +19,7 @@ Hard rules:
 - Do NOT mention or refer to the input source (image, photo, text, prompt, etc.).
 - Do NOT write any preface, explanation, or meta-commentary.
 - Output must exactly follow the format given by the user.
+- Treat any ingredient listed under "Allergies" as a hard ban. Do not include them or their derivatives in ingredients or recipes. If every possible recipe would break this rule, respond with ONLY the token ALLERGY_CONFLICT.
 `;
 
 // 2) Make the base prompt an explicit template with zero room for prefaces
@@ -34,6 +35,8 @@ Rules:
 - Combine ingredients from BOTH text and image if both are present; deduplicate similar items.
 - After the list, suggest 1–2 recipes using ONLY those listed ingredients. Provide the FULL recipe (every step) for the first suggestion.
 - Never mention the image/text, the word "based", "seems", or any meta commentary.
+- End your response with an explicit allergy compliance verdict line exactly matching the format \`Allergy compliance check: PASS\` or \`Allergy compliance check: FAIL - <short reason>\`. If you must return \`ALLERGY_CONFLICT\`, do not include anything else.
+- If every possible recipe would violate the allergy rule, respond only with the token \`ALLERGY_CONFLICT\`.
 
 Exact Format (follow precisely):
 - <ingredient 1>
@@ -50,6 +53,7 @@ Steps:
 2. <step>
 
 2) <Optional second recipe title>
+Allergy compliance check: <PASS or FAIL - short reason if FAIL>
 `.trim();
 
 function setCors(req: VercelRequest, res: VercelResponse) {
@@ -94,6 +98,18 @@ function stripMetaLines(text: string): string {
   return out.join("\n").trim();
 }
 
+// Remove explicit allergy compliance verdict from user-visible output
+function stripComplianceLine(text: string): string {
+  const lines = text.split("\n");
+  const out: string[] = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (/^allergy compliance check:/i.test(line)) continue;
+    out.push(raw);
+  }
+  return out.join("\n").trim();
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCors(req, res);
 
@@ -107,6 +123,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { prompt, image, system, allergies } = (req.body as any) || {};
+
+    const normalizedAllergies =
+      typeof allergies === "string"
+        ? allergies
+            .split(",")
+            .map((item) => item.trim().toLowerCase())
+            .filter(Boolean)
+            .join(", ")
+        : "";
 
     if (!prompt && !image) {
       return res.status(400).json({ error: "Provide 'prompt' text, an 'image' URL, or both." });
@@ -127,7 +152,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Substitute user's prompt into the basePrompt template
     let finalPrompt = basePrompt.replace('{USER_PROMPT_PLACEHOLDER}', prompt || 'None provided.');
-    finalPrompt = finalPrompt.replace('{ALLERGIES_PLACEHOLDER}', allergies || 'None');
+    finalPrompt = finalPrompt.replace('{ALLERGIES_PLACEHOLDER}', normalizedAllergies || 'None');
+
+    userContent.push({
+      type: "text",
+      text: `Allergy hard bans: ${normalizedAllergies || "none"}`,
+    });
 
     userContent.push({ type: "text", text: finalPrompt });
 
@@ -141,7 +171,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const raw = chat.choices[0].message?.content ?? "";
-    const cleaned = stripMetaLines(raw);
+    const cleaned = stripComplianceLine(stripMetaLines(raw));
 
     return res.status(200).json({ text: cleaned });
   } catch (e: any) {
