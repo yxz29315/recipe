@@ -17,10 +17,10 @@ import {
 import MathJaxSVG from "react-native-mathjax-svg";
 
 import { Session } from "@supabase/supabase-js";
+import { Link, useRouter } from "expo-router";
 import { useEffect } from "react";
 import Auth from "../components/Auth";
 import { supabase } from "../lib/supabase"; // note: index.tsx is in /app, so ../lib
-import { Link } from "expo-router";
 
 const API_URL = "https://nomieai.vercel.app/api/llm";
 
@@ -421,6 +421,8 @@ function MainScreen() {
 
 export default function Index() {
   const [session, setSession] = useState<Session | null>(null);
+  const router = useRouter();
+  const [checkedProfile, setCheckedProfile] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -430,7 +432,35 @@ export default function Index() {
     return () => subscription.unsubscribe();
   }, []);
 
-  return session && session.user ? <MainScreen /> : <Auth />;
+  useEffect(() => {
+    const run = async () => {
+      if (!session?.user) {
+        setCheckedProfile(true);
+        return;
+      }
+      try {
+        const { data, error, status } = await supabase
+          .from('profiles')
+          .select('allergies, onboarding_dismissed')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        const allergies = (data?.allergies as string | null) ?? null;
+        const dismissed = (data as any)?.onboarding_dismissed === true;
+        const missing = !allergies || !allergies.trim();
+        if (missing && !dismissed) {
+          router.replace('/onboarding' as any);
+          return;
+        }
+      } finally {
+        setCheckedProfile(true);
+      }
+    };
+    run();
+  }, [session, router]);
+
+  if (!session) return <Auth />;
+  if (!checkedProfile) return <View style={{flex:1, justifyContent:'center', alignItems:'center'}}><ActivityIndicator /></View>;
+  return <MainScreen />;
 }
 
 /** ---------- Styles ---------- */

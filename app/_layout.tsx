@@ -23,6 +23,16 @@ export default function RootLayout() {
     },
         }}
       />
+      <Stack.Screen
+        name="onboarding"
+        options={{
+          title: "Onboarding",
+          headerTitleStyle: {
+            fontSize: 30,
+            fontWeight: "bold",
+          },
+        }}
+      />
     </Stack>
   );
 }

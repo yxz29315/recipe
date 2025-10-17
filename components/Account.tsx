@@ -14,7 +14,6 @@ import { supabase } from '../lib/supabase'
 export default function Account({ session }: { session: Session }) {
   const [loading, setLoading] = useState(true)
   const [allergies, setAllergies] = useState('')
-  const [website, setWebsite] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
 
   useEffect(() => {
@@ -29,7 +28,7 @@ export default function Account({ session }: { session: Session }) {
 
       const { data, error, status } = await supabase
         .from('profiles')
-        .select('allergies, website, avatar_url')
+        .select('allergies, avatar_url')
         .eq('id', session.user.id)
         .single()
 
@@ -37,7 +36,6 @@ export default function Account({ session }: { session: Session }) {
 
       if (data) {
         setAllergies(data.allergies ?? '')
-        setWebsite(data.website ?? '')
         setAvatarUrl(data.avatar_url ?? '')
       }
     } catch (err) {
@@ -49,11 +47,9 @@ export default function Account({ session }: { session: Session }) {
 
   async function updateProfile({
     allergies,
-    website,
     avatar_url,
   }: {
     allergies: string
-    website: string
     avatar_url: string
   }) {
     try {
@@ -63,7 +59,6 @@ export default function Account({ session }: { session: Session }) {
       const updates = {
         id: session.user.id,
         allergies,
-        website,
         avatar_url,
         updated_at: new Date().toISOString(),
       }
@@ -79,15 +74,6 @@ export default function Account({ session }: { session: Session }) {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.verticallySpaced, styles.mt20]}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={[styles.input, styles.inputDisabled]}
-          value={session?.user?.email ?? ''}
-          editable={false}
-        />
-      </View>
-
       <View style={styles.verticallySpaced}>
         <Text style={styles.label}>Allergies</Text>
         <TextInput
@@ -100,20 +86,12 @@ export default function Account({ session }: { session: Session }) {
       </View>
 
       <View style={styles.verticallySpaced}>
-        <Text style={styles.label}>Website</Text>
-        <TextInput
-          style={styles.input}
-          value={website}
-          onChangeText={setWebsite}
-          autoCapitalize="none"
-          placeholder="https://example.com"
-        />
       </View>
 
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <Pressable
           style={[styles.btn, loading && styles.btnDisabled]}
-          onPress={() => updateProfile({ allergies, website, avatar_url: avatarUrl })}
+          onPress={() => updateProfile({ allergies, avatar_url: avatarUrl })}
           disabled={loading}
         >
           {loading ? <ActivityIndicator /> : <Text style={styles.btnText}>Update</Text>}
