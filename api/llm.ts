@@ -23,7 +23,7 @@ Hard rules:
 `;
 
 // 2) Make the base prompt an explicit template with zero room for prefaces
-const basePrompt = `
+const strictBasePrompt = `
 Task: Extract ingredients from any provided text and/or image, then suggest 1–2 recipes.
 User Provided Text: {USER_PROMPT_PLACEHOLDER}
 Allergies: {ALLERGIES_PLACEHOLDER}
@@ -34,6 +34,40 @@ Rules:
 - Start immediately with a bullet list of ingredient names ONLY (one per line). No intro sentence.
 - Combine ingredients from BOTH text and image if both are present; deduplicate similar items.
 - After the list, suggest 1–2 recipes using ONLY those listed ingredients. Provide the FULL recipe (every step) for the first suggestion.
+- Never mention the image/text, the word "based", "seems", or any meta commentary.
+- End your response with an explicit allergy compliance verdict line exactly matching the format \`Allergy compliance check: PASS\` or \`Allergy compliance check: FAIL - <short reason>\`. If you must return \`ALLERGY_CONFLICT\`, do not include anything else.
+- If every possible recipe would violate the allergy rule, respond only with the token \`ALLERGY_CONFLICT\`.
+
+Exact Format (follow precisely):
+- <ingredient 1>
+- <ingredient 2>
+- <ingredient 3>
+
+Recipe ideas:
+1) <Recipe title>
+Ingredients:
+- <ingredient a>
+- <ingredient b>
+Steps:
+1. <step>
+2. <step>
+
+2) <Optional second recipe title>
+Allergy compliance check: <PASS or FAIL - short reason if FAIL>
+`.trim();
+
+const flexibleBasePrompt = `
+Task: Extract ingredients from any provided text and/or image, then suggest 1–2 recipes.
+User Provided Text: {USER_PROMPT_PLACEHOLDER}
+Allergies: {ALLERGIES_PLACEHOLDER}
+Rules:
+- CRITICAL: If any allergies are listed in the "Allergies" section, you MUST NOT suggest any recipes that include those ingredients or any ingredients derived from them. For example, if "peanuts" is an allergy, you must not suggest peanut butter. This is a very strict rule, and you must follow it.
+- ONLY list ingredients EXPLICITLY provided in the text or CLEARLY visible in the image in the initial ingredient list. Do NOT infer or add any other ingredients to that list.
+- From 'User Provided Text', identify and list all distinct ingredients. Be mindful that ingredients can be single words (e.g., "salt) or multi-word phrases (e.g., "soy sauce", "heavy cream"). Treat each identified ingredient as a separate item.
+- Start immediately with a bullet list of ingredient names ONLY (one per line). No intro sentence.
+- Combine ingredients from BOTH text and image if both are present; deduplicate similar items.
+- After the list, you MAY suggest recipes that include additional reasonable ingredients the user might not currently have (e.g., pantry items, common extras), as long as you still fully respect the allergy constraints.
+- Provide the FULL recipe (every step) for the first suggestion.
 - Never mention the image/text, the word "based", "seems", or any meta commentary.
 - End your response with an explicit allergy compliance verdict line exactly matching the format \`Allergy compliance check: PASS\` or \`Allergy compliance check: FAIL - <short reason>\`. If you must return \`ALLERGY_CONFLICT\`, do not include anything else.
 - If every possible recipe would violate the allergy rule, respond only with the token \`ALLERGY_CONFLICT\`.
@@ -122,7 +156,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { prompt, image, system, allergies } = (req.body as any) || {};
+    const { prompt, image, system, allergies, allowExtra } = (req.body as any) || {};
 
     const normalizedAllergies =
       typeof allergies === "string"
@@ -151,8 +185,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Substitute user's prompt into the basePrompt template
-    let finalPrompt = basePrompt.replace('{USER_PROMPT_PLACEHOLDER}', prompt || 'None provided.');
+    const useFlexible = !!allowExtra;
+    const template = useFlexible ? flexibleBasePrompt : strictBasePrompt;
+
+    let finalPrompt = template.replace('{USER_PROMPT_PLACEHOLDER}', prompt || 'None provided.');
     finalPrompt = finalPrompt.replace('{ALLERGIES_PLACEHOLDER}', normalizedAllergies || 'None');
+
 
     userContent.push({
       type: "text",

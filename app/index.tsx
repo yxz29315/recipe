@@ -9,10 +9,11 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import MathJaxSVG from "react-native-mathjax-svg";
 
@@ -241,6 +242,7 @@ function MainScreen() {
   const [error, setError] = useState<string | null>(null);
   const [allergies, setAllergies] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [allowExtra, setAllowExtra] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -352,7 +354,12 @@ function MainScreen() {
       const resp = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, image, allergies: normalizedAllergies }),
+        body: JSON.stringify({
+          prompt,
+          image,
+          allergies: normalizedAllergies,
+          allowExtra,
+        }),
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
@@ -402,6 +409,16 @@ function MainScreen() {
           multiline
           style={styles.input}
         />
+        
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+          <Switch
+            value={allowExtra}
+            onValueChange={setAllowExtra}
+          />
+          <Text style={{ marginLeft: 8, fontSize: 16 }}>
+            Allow recipes to use extra ingredients I don’t have
+          </Text>
+        </View>
 
         <TouchableOpacity style={styles.sendButton} onPress={ask}>
           <Text style={styles.sendButtonText}>Send</Text>
